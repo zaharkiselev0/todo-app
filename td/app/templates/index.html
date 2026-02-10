@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    {% load static vite %}
+    <meta charset="UTF-8" />
+    <title>Todo</title>
+    {% vite_css 'index.html' as css_files %}
+    {% for css_file in css_files %}
+      <link rel="stylesheet" href="{% static css_file %}">
+    {% endfor %}
+  </head>
+  <body>
+    <div id="root"></div>
+
+    <script type="module" src="{% vite_asset 'index.html' %}"></script>
+  </body>
+</html>

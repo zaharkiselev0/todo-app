@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Регистрация</title>
+</head>
+<body>
+<h1> Регистрация пользователя</h1>
+<form method="post" action="{% url 'signup' %}">
+  {% csrf_token %}
+  {{ form.errors }}
+  <input type="text" name="username" placeholder="username" />
+  <input type="password" name="password1" placeholder="Введите пароль"/>
+  <input type="password" name="password2" placeholder="Повторите пароль"/>
+  <input type="submit" name="send" value="Зарегистрироваться" />
+</form>
+</body>
+</html>
