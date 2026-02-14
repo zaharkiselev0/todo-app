@@ -9,8 +9,8 @@ const api = axios.create({
     },
 });
 
-export async function getUser() {
-    const { data } = await api.get('user/');
+export async function getUser(signal) {
+    const { data } = await api.get('user/', {signal});
     return data;
 }
 

@@ -5,20 +5,20 @@ import { Greetings } from './Greetings';
 import { LoginButton } from './LoginButton';
 import { SignupButton } from './SignupButton';
 import { LogoutButton } from './LogoutButton';
-import { Tasks } from './Tasks';
+import { TasksView } from './TasksView';
 
 
 export default function App() {
-    const {user, setUser} = useUser();
+    const {user, logout} = useUser();
 
     return (
         <>
             <LoginButton />
             <SignupButton />
-            <LogoutButton setUser={setUser}/>
+            <LogoutButton logout={logout}/>
             <Greetings name={user?.username}/>
-            <TaskProvider user={user}>
-                <Tasks/>
+            <TaskProvider userId={user?.id}>
+                <TasksView/>
             </TaskProvider>
         </>
     );

@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { getCookie } from './getCookie.js';
+import { normalizeTaskArray, normalizeTask } from './normalize.js';
 
 const api = axios.create({
     baseURL: 'http://localhost:8000/tasks/',
@@ -14,7 +15,7 @@ export class TaskService{
         try{
             const result = await api.get('list/', { signal });
             if(result.status >= 200 && result.status <= 299){
-                return result.data;
+                return normalizeTaskArray(result.data);
             } else {
                 throw new TaskServiceError(`Не получилось обработать запрос list/. Статус ответа =  ${result.status}`);
             }
@@ -31,7 +32,7 @@ export class TaskService{
         try{
             const result = await api.post('create/', { name });
             if(result.status >= 200 && result.status <= 299){
-                return result.data;
+                return normalizeTask(result.data);
             } else {
                 throw new TaskServiceError(`Не получилось обработать запрос create/. Статус ответа = ${result.status}`);
             }
@@ -44,7 +45,7 @@ export class TaskService{
         try{
             const result = await api.patch(`update/${id}/`, payload);
             if(result.status >= 200 && result.status <= 299){
-                return result.data;
+                return normalizeTask(result.data);
             } else {
                 throw new TaskServiceError(`Не получилось обработать запрос update/. Статус ответа = result.status`);
             }

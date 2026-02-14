@@ -1,78 +1,90 @@
 import { useReducer, useEffect } from 'react';
-import { taskReducer } from '../resources/taskReducer.js';
-import { TaskService } from '../resources/TaskService.js'
+import { TaskService } from '../resources/TaskService.js';
 import { normalizeTaskArray, normalizeTask } from '../resources/normalize.js';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
-const initialTasks = {
-    tasks: [],
-    errors: { load: null, create: null, update: {}, delete: {} }
-};
+export function useTasks(userId) {
+    const queryClient = useQueryClient();
 
+    const tasks = useQuery({
+        queryKey: ['todos', userId],
+        queryFn: ({ signal }) => TaskService.get(signal),
+        enabled: !!userId,
+    });
 
-export function useTasks(user) {
-    const [state, dispatch] = useReducer(taskReducer, initialTasks);
-
-    async function create(taskName) {
-        dispatch({ type: 'clearError', errorType: 'create' });
-        try {
-            const task = await TaskService.create(taskName);
-            const normalized = normalizeTask(task);
-            dispatch({ type: 'add', task: normalized });
-        } catch(e) {
-            dispatch({ type: 'setError', errorType: 'create', errorMessage: e.message });
-        }
-    }
-
-    async function update(taskId, field, value) {
-        const oldValue = state.tasks.find(t => t.id === taskId)?.[field];
-        dispatch({ type: 'change', taskId, field, value });
-
-        try {
-            await TaskService.update(taskId, { [field]: value });
-            dispatch({ type: 'clearError', errorType: 'update', taskId });
-        } catch(e) {
-            dispatch({ type: 'setError', errorType: 'update', taskId, errorMessage: e.message });
-            oldValue !== undefined && dispatch({ type: 'change', taskId, field, value: oldValue });
-        }
-    }
-
-    async function del(taskId) {
-        const task = state.tasks.find(t => t.id === taskId);
-        dispatch({ type: 'delete', taskId });
-
-        try {
-            await TaskService.del(taskId);
-            dispatch({ type: 'clearError', errorType: 'delete', taskId });
-        } catch(e) {query
-            dispatch({ type: 'setError', errorType: 'delete', taskId, errorMessage: e.message });
-            task && dispatch({ type: 'add', task });
-        }
-    }
-
-    useEffect(() => {
-        const controller = new AbortController();
-
-        async function loadTasks() {
-            try {
-                const loaded = await TaskService.get(controller.signal);
-                const normalized = normalizeTaskArray(loaded);
-                dispatch({ type: 'set', tasks: normalized });
-                dispatch({ type: 'clearError', errorType: 'load'});
-            } catch(e) {
-                if(e?.name === 'CanceledError' || e?.name === 'AbortError' || e?.code === 'ERR_CANCELED') return;
-                dispatch({ type: 'setError', errorType: 'load', errorMessage: e.message });
+    const updateMutation = useMutation({mutationFn: data => TaskService.update(data.id, data.payload),
+        onMutate: async data => {
+            const previousTodos = queryClient.getQueryData(['todos', userId]);
+            const previous = previousTodos?.find(t => t.id === data.id);
+            if (previous){
+                const newTodo = {...previous, ...data.payload};
+                await queryClient.cancelQueries(['todos', userId]);
+                queryClient.setQueryData(['todos', userId], old => old.map(t => t.id !== data.id ? t : newTodo));
             }
-        }
+            return { previousTodos }
+        },
 
-        loadTasks();
-        return () => controller.abort();
-    }, [user]);
+        onError: (err, data, context) => {
+            queryClient.setQueryData(['todos', userId], context.previousTodos);
+        },
+
+        onSettled: () => {
+            queryClient.invalidateQueries(['todos', userId]);
+        },
+    });
+
+    const createMutation = useMutation({mutationFn: data => TaskService.create(data.name),
+        onMutate: async data => {
+            const newTodo = normalizeTask({name: data.name});
+            const previousTodos = queryClient.getQueryData(['todos', userId]);
+            if (newTodo && previousTodos){
+                await queryClient.cancelQueries(['todos',userId]);
+                queryClient.setQueryData(['todos', userId], old => [newTodo, ...old]);
+            }
+            return { previousTodos, id: newTodo?.id }
+        },
+
+        onError: (err, data, context) => {
+            queryClient.setQueryData(['todos', userId], context.previousTodos);
+        },
+
+        onSuccess: async (task, variables, context) => {
+            await queryClient.cancelQueries(['todos', userId]);
+            if (context.previousTodos){
+                if (context.id){
+                    queryClient.setQueryData(['todos', userId], old => old.map(t => t.id === context.id ? task : t));
+                }else{
+                    queryClient.setQueryData(['todos', userId], old => [task, ...old]);
+                }
+            }
+        },
+
+        onSettled: () => {
+            queryClient.invalidateQueries(['todos', userId]);
+        },
+    });
+
+    const deleteMutation = useMutation({mutationFn: data => TaskService.del(data.id),
+        onMutate: async data => {
+            const previousTodos = queryClient.getQueryData(['todos', userId]);
+            if(previousTodos){
+                await queryClient.cancelQueries(['todos',userId]);
+                queryClient.setQueryData(['todos',userId], old => old.filter(t => t.id !== data.id));
+            }
+            return { previousTodos }
+        },
+
+        onError: (err, data, context) => {
+            queryClient.setQueryData(['todos', userId], context.previousTodos);
+            queryClient.invalidateQueries(['todos', userId]);
+        },
+    });
 
     return {
-        tasks: state.tasks,
-        errors: state.errors,
-        create,
-        update,
-        del
+        tasks,
+        create: createMutation,
+        update: updateMutation,
+        del: deleteMutation,
     };
 }
+

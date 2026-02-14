@@ -13,7 +13,7 @@ def user_detail(request):
     if request.method == "GET":
         data = None
         if request.user.is_authenticated:
-            data = {'username': request.user.username}
+            data = {'username': request.user.username, 'id': request.user.id}
         return JsonResponse(data, safe=False)
 
 class SignUp(CreateView):

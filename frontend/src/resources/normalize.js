@@ -30,8 +30,7 @@ export function normalizeTask(task){
     if (typeof task.id === "number" && Number.isInteger(task.id) ){
         normalized.id = task.id;
     } else {
-        normalizeError("Неверный формат поля id");
-        normalized.id = Date.now();
+        normalized.id = crypto.randomUUID();
     }
 
     return normalized;

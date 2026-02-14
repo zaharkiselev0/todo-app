@@ -1,11 +1,8 @@
-import { logoutUser } from '../resources/authApi.js';
-
-export function LogoutButton({setUser}) {
+export function LogoutButton({logout}) {
     function handleLogout(e){
         try{
             console.log("Попытка выхода");
-            logoutUser();
-            setUser(null);
+            logout();
             console.log(`Пользователь вышел`);
         } catch(e){
             console.error(`Ошибка при попытке выйти: ${e}`);
